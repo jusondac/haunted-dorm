@@ -24,7 +24,7 @@ func main() {
 	panelRoomDefense := tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true)
-	panelRoomDefense.SetBorder(true).SetTitle(" Room Defense ").SetTitleAlign(tview.AlignLeft)
+	panelRoomDefense.SetBorder(true).SetTitle(" Dreamers ").SetTitleAlign(tview.AlignLeft)
 	
 	panelRoomItems := tview.NewTextView().
 		SetDynamicColors(true).
@@ -85,28 +85,33 @@ func main() {
 		SetDirection(tview.FlexColumn).
 		AddItem(panelRoomDefense, 0, 1, false).
 		AddItem(panelRoomItems, 0, 1, false)
+	bottomRow.SetBorderPadding(0, 0, 0, 0)
 
 	// Left column: Logs on top, bottom row below
 	leftColumn := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(panelLog, 0, 2, false).
 		AddItem(bottomRow, 0, 1, false)
+	leftColumn.SetBorderPadding(0, 0, 0, 0)
 
 	// Right column: Your Items and Shop stacked vertically
 	rightColumn := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(panelYourItems, 0, 1, false).
 		AddItem(panelShop, 0, 2, false)
+	rightColumn.SetBorderPadding(0, 0, 0, 0)
 
 	// Create main layout: left column and right column side by side
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
 		AddItem(leftColumn, 0, 2, false).
 		AddItem(rightColumn, 0, 1, true)
+	flex.SetBorderPadding(0, 0, 0, 0)
 
 	// Global keyboard shortcuts
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		gs := GetGameState()
+		items := GetAvailableItems()
 		
 		switch event.Key() {
 		case tcell.KeyCtrlC:
@@ -114,41 +119,30 @@ func main() {
 			ticker.Stop()
 			app.Stop()
 			return nil
-		case tcell.KeyLeft:
-			// Previous room
-			if gs.currentRoom > 0 {
-				gs.currentRoom--
-				AddLog(panelLog, fmt.Sprintf("[cyan]Viewing: %s[white]", gs.rooms[gs.currentRoom].name))
-				updatePanels()
-			}
-			return nil
-		case tcell.KeyRight:
-			// Next room
-			if gs.currentRoom < len(gs.rooms)-1 {
-				gs.currentRoom++
-				AddLog(panelLog, fmt.Sprintf("[cyan]Viewing: %s[white]", gs.rooms[gs.currentRoom].name))
-				updatePanels()
-			}
-			return nil
-		}
-		
-		// Handle character keys
-		items := GetAvailableItems()
-		switch event.Rune() {
-		case 'u', 'U':
+		case tcell.KeyUp:
 			// Move selection up
 			if selectedItem > 0 {
 				selectedItem--
 				updatePanels()
 			}
 			return nil
-		case 'd', 'D':
+		case tcell.KeyDown:
 			// Move selection down
 			if selectedItem < len(items)-1 {
 				selectedItem++
 				updatePanels()
 			}
 			return nil
+		case tcell.KeyLeft:
+			// Previous room (disabled for now)
+			return nil
+		case tcell.KeyRight:
+			// Next room (disabled for now)
+			return nil
+		}
+		
+		// Handle character keys
+		switch event.Rune() {
 		case 'i', 'I':
 			// Buy selected item
 			BuyItem(selectedItem, panelLog)

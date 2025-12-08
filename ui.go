@@ -64,9 +64,20 @@ func UpdateItemsPanel(panel *tview.TextView) {
 	gs := GetGameState()
 	
 	fmt.Fprintf(panel, "[yellow]YOUR ITEMS[white]\n\n")
+	
+	// Live resources
+	fmt.Fprintf(panel, "[gold]Coins:[white] %d (+%.1f/s)\n", gs.coins, gs.coinsPerS)
+	fmt.Fprintf(panel, "[cyan]Diamonds:[white] %d (+%.1f/s)\n\n", gs.diamonds, gs.diamPerS)
+	
+	// Items
 	fmt.Fprintf(panel, "[cyan]Door:[white] Level %d (HP: %d)\n", gs.doorLevel, gs.doorMaxHP)
-	fmt.Fprintf(panel, "[green]Beds:[white] %d (Coins/s: +%d)\n", gs.beds, gs.beds)
-	fmt.Fprintf(panel, "[orange]Defense:[white] %d\n", gs.rooms[0].defense)
+	if gs.bedLevel > 0 {
+		fmt.Fprintf(panel, "[green]Bed:[white] Level %d (+%.0f coins/s)\n", gs.bedLevel, gs.coinsPerS)
+	}
+	if gs.playboxLevel > 0 {
+		fmt.Fprintf(panel, "[magenta]Playbox:[white] Level %d (+%.0f diamonds/s)\n", gs.playboxLevel, gs.diamPerS)
+	}
+	fmt.Fprintf(panel, "[orange]Defense:[white] %d\n", gs.playerMaxDefense)
 }
 
 func UpdateShopPanel(panel *tview.TextView, selectedItem int) {
@@ -74,18 +85,29 @@ func UpdateShopPanel(panel *tview.TextView, selectedItem int) {
 	
 	items := GetAvailableItems()
 	
-	fmt.Fprintf(panel, "[yellow]SHOP[white] [gray](U/D: navigate, I: buy)[white]\n\n")
+	fmt.Fprintf(panel, "[yellow]SHOP[white] [gray](↑/↓: navigate, I: buy)[white]\n\n")
 	for i, item := range items {
-		cursor := "  "
+		color := GetItemColor(item)
+		
+		// Highlight selected item with background
 		if i == selectedItem {
-			cursor = "[yellow]►[white] "
+			fmt.Fprintf(panel, "[black:white]%s%s[white:-]\n", color, item.name)
+		} else {
+			fmt.Fprintf(panel, "%s%s[white]\n", color, item.name)
 		}
-		costColor := "[gold]"
-		if item.costType == "diamond" {
-			costColor = "[cyan]"
+		
+		// Show cost
+		costStr := ""
+		if item.costCoins > 0 && item.costDiamonds > 0 {
+			costStr = fmt.Sprintf("[gold]%dc[white] + [cyan]%dd[white]", item.costCoins, item.costDiamonds)
+		} else if item.costCoins > 0 {
+			costStr = fmt.Sprintf("[gold]%dc[white]", item.costCoins)
+		} else if item.costDiamonds > 0 {
+			costStr = fmt.Sprintf("[cyan]%dd[white]", item.costDiamonds)
 		}
-		fmt.Fprintf(panel, "%s%s - %s%d %s[white]\n", cursor, item.name, costColor, item.cost, item.costType)
-		fmt.Fprintf(panel, "   %s\n", item.description)
+		
+		fmt.Fprintf(panel, "  Cost: %s\n", costStr)
+		fmt.Fprintf(panel, "  %s\n", item.description)
 	}
 }
 
@@ -95,11 +117,21 @@ func UpdateRoomDefensePanel(panel *tview.TextView) {
 	gs := GetGameState()
 	room := gs.rooms[gs.currentRoom]
 	
-	fmt.Fprintf(panel, "[yellow]ROOM DEFENSE[white] [gray](←/→: switch room)[white]\n\n")
-	fmt.Fprintf(panel, "[cyan]%s (%d/%d)[white]\n\n", room.name, gs.currentRoom+1, len(gs.rooms))
-	fmt.Fprintf(panel, "[orange]Defense:[white] %d\n", room.defense)
-	fmt.Fprintf(panel, "[gold]Coins/s:[white] %.1f\n", room.coinsPerS)
-	fmt.Fprintf(panel, "[cyan]Diamonds/s:[white] %.1f\n", room.diamPerS)
+	fmt.Fprintf(panel, "[yellow]DREAMERS[white]\n\n")
+	
+	// Show player first
+	playerBar := DrawHPBar(gs.playerDefense, gs.playerMaxDefense, 20)
+	fmt.Fprintf(panel, "[green]You:[white] %s %d/%d\n", playerBar, gs.playerDefense, gs.playerMaxDefense)
+	
+	// Show AI characters
+	for _, char := range room.characters {
+		charBar := DrawHPBar(char.defense, char.maxDefense, 20)
+		fmt.Fprintf(panel, "[cyan]%s:[white] %s %d/%d\n", char.name, charBar, char.defense, char.maxDefense)
+	}
+	
+	fmt.Fprintf(panel, "\n[yellow]RESOURCES[white]\n")
+	fmt.Fprintf(panel, "[gold]Coins:[white] %d (+%.1f/s)\n", gs.coins, gs.coinsPerS)
+	fmt.Fprintf(panel, "[cyan]Diamonds:[white] %d (+%.1f/s)\n", gs.diamonds, gs.diamPerS)
 }
 
 func UpdateRoomItemsPanel(panel *tview.TextView) {
