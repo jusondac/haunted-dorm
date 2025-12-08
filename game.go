@@ -102,13 +102,15 @@ func UpdateGame() {
 	// Calculate coins per second from beds
 	gameState.coinsPerS = 0
 	if gameState.bedLevel > 0 {
-		gameState.coinsPerS = float64(1 << (gameState.bedLevel - 1)) // 2^(level-1): 1,2,4,8,16...
+		shift := uint(gameState.bedLevel - 1)
+		gameState.coinsPerS = float64(int(1) << shift) // 2^(level-1): 1,2,4,8,16...
 	}
 	
 	// Calculate diamonds per second from playbox
 	gameState.diamPerS = 0
 	if gameState.playboxLevel > 0 {
-		gameState.diamPerS = float64(1 << (gameState.playboxLevel - 1)) // 2^(level-1): 1,2,4,8,16...
+		shift := uint(gameState.playboxLevel - 1)
+		gameState.diamPerS = float64(int(1) << shift) // 2^(level-1): 1,2,4,8,16...
 	}
 	
 	// Add coins
@@ -224,9 +226,11 @@ func GetAvailableItems() []Item {
 		coinCost := baseCost
 		diamondCost := 0
 		if nextLevel >= 3 {
-			diamondCost = 10 * (1 << uint(nextLevel - 3)) // 0,0,10,20,40,80,160,320,640,1280
+			diamondShift := uint(nextLevel - 3)
+			diamondCost = 10 * (int(1) << diamondShift) // 0,0,10,20,40,80,160,320,640,1280
 		}
-		production := float64(1 << uint(nextLevel - 1))
+		prodShift := uint(nextLevel - 1)
+		production := float64(int(1) << prodShift)
 		
 		items = append(items, Item{
 			name:         "Bed",
@@ -261,8 +265,10 @@ func GetAvailableItems() []Item {
 	// Production: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 diamonds/s
 	if gameState.playboxLevel < 10 {
 		nextLevel := gameState.playboxLevel + 1
-		coinCost := 10 * (1 << uint(gameState.playboxLevel)) // 10, 20, 40, 80, 160...
-		production := float64(1 << uint(nextLevel - 1))
+		costShift := uint(gameState.playboxLevel)
+		coinCost := 10 * (int(1) << costShift) // 10, 20, 40, 80, 160...
+		prodShift := uint(nextLevel - 1)
+		production := float64(int(1) << prodShift)
 		
 		items = append(items, Item{
 			name:         "Playbox",

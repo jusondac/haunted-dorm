@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -110,7 +109,6 @@ func main() {
 
 	// Global keyboard shortcuts
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		gs := GetGameState()
 		items := GetAvailableItems()
 		
 		switch event.Key() {
