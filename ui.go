@@ -10,22 +10,15 @@ func UpdateLogPanel(panelX *tview.TextView) {
 	// Don't clear, just update at the top by reading existing content
 	gs := GetGameState()
 	
-	// Build status header - just HP bars and resources
+	// Build status header - just title and hunter info if active
 	status := "[yellow]HAUNTED ROOM DEFENSE[white]\n\n"
-	
-	// HP Bars
-	doorBar := DrawHPBar(gs.doorHP, gs.doorMaxHP, 30)
-	status += fmt.Sprintf("[cyan]Door HP:[white] %s %d/%d\n", doorBar, gs.doorHP, gs.doorMaxHP)
 	
 	if gs.hunterActive {
 		hunterBar := DrawHPBar(gs.hunterHP, gs.hunterMaxHP, 30)
 		status += fmt.Sprintf("[red]Hunter HP:[white] %s %d/%d\n", hunterBar, gs.hunterHP, gs.hunterMaxHP)
-		status += fmt.Sprintf("[red]Hunter Pos:[white] %d/10\n", gs.hunterPos)
+		status += fmt.Sprintf("[red]Hunter Pos:[white] %d/10\n\n", gs.hunterPos)
 	}
 	
-	status += "\n[yellow]RESOURCES[white]\n"
-	status += fmt.Sprintf("[gold]Coins:[white] %d (+%.1f/s)\n", gs.coins, gs.coinsPerS)
-	status += fmt.Sprintf("[cyan]Diamonds:[white] %d (+%.1f/s)\n\n", gs.diamonds, gs.diamPerS)
 	status += "[yellow]RECENT LOGS[white]\n"
 	
 	// Get current text and find where logs start
@@ -138,14 +131,17 @@ func UpdateRoomItemsPanel(panel *tview.TextView) {
 	panel.Clear()
 	
 	gs := GetGameState()
-	room := gs.rooms[gs.currentRoom]
 	
 	fmt.Fprintf(panel, "[yellow]ROOM ITEMS[white]\n\n")
 	
-	if len(room.items) == 0 {
+	// Show door HP
+	doorBar := DrawHPBar(gs.doorHP, gs.doorMaxHP, 20)
+	fmt.Fprintf(panel, "[cyan]Door:[white] %s %d/%d\n\n", doorBar, gs.doorHP, gs.doorMaxHP)
+	
+	if len(gs.rooms[gs.currentRoom].items) == 0 {
 		fmt.Fprintf(panel, "[gray]No items[white]\n")
 	} else {
-		for _, item := range room.items {
+		for _, item := range gs.rooms[gs.currentRoom].items {
 			fmt.Fprintf(panel, "• %s\n", item)
 		}
 	}
@@ -153,6 +149,9 @@ func UpdateRoomItemsPanel(panel *tview.TextView) {
 	if gs.hunterActive {
 		fmt.Fprintf(panel, "\n[red]⚠ HUNTER ACTIVE![white]\n")
 		fmt.Fprintf(panel, "Position: %d/10\n", gs.hunterPos)
+		
+		hunterBar := DrawHPBar(gs.hunterHP, gs.hunterMaxHP, 20)
+		fmt.Fprintf(panel, "[red]HP:[white] %s %d/%d\n", hunterBar, gs.hunterHP, gs.hunterMaxHP)
 	}
 }
 
