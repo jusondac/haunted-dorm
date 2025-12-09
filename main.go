@@ -97,7 +97,11 @@ func main() {
 	// Create game over modal (without done func yet)
 	gameOverModal := tview.NewModal().
 		SetText("").
-		AddButtons([]string{"Yes", "No"})
+		AddButtons([]string{"Yes", "No"}).
+		SetBackgroundColor(tcell.ColorBlack).
+		SetButtonBackgroundColor(tcell.ColorBlack).
+		SetButtonTextColor(tcell.ColorWhite).
+		SetTextColor(tcell.ColorWhite)
 
 	// Pages to handle modal overlay
 	pages := tview.NewPages().
@@ -157,6 +161,12 @@ func main() {
 
 	// Global keyboard shortcuts
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// If game over modal is visible, let it handle input
+		gs := GetGameState()
+		if gs.gameOver {
+			return event
+		}
+		
 		items := GetAvailableItemsByCategory(shopCategory)
 		
 		switch event.Key() {

@@ -8,43 +8,14 @@ import (
 
 func UpdateLogPanel(panelX *tview.TextView) {
 	// Don't clear, just update at the top by reading existing content
-	gs := GetGameState()
-	
-	// Build status header - just title and hunter info if active
-	status := "[yellow]HAUNTED ROOM DEFENSE[white]\n\n"
-	
-	if gs.hunterActive {
-		hunterBar := DrawHPBar(gs.hunterHP, gs.hunterMaxHP, 30)
-		status += fmt.Sprintf("[red]Hunter HP:[white] %s %d/%d\n", hunterBar, gs.hunterHP, gs.hunterMaxHP)
-		status += fmt.Sprintf("[red]Hunter Pos:[white] %d/10\n\n", gs.hunterPos)
-	}
-	
-	status += "[yellow]RECENT LOGS[white]\n"
-	
+
 	// Get current text and find where logs start
 	currentText := panelX.GetText(false)
-	logsStart := -1
-	searchStr := "RECENT LOGS"
-	
-	// Extract only the log messages
-	if len(currentText) > 0 {
-		if idx := findString(currentText, searchStr); idx >= 0 {
-			// Find the position after the logs header line
-			afterHeader := idx + len(searchStr)
-			for afterHeader < len(currentText) && currentText[afterHeader] != '\n' {
-				afterHeader++
-			}
-			if afterHeader < len(currentText) {
-				afterHeader++ // Skip the newline
-				logsStart = afterHeader
-			}
-		}
-	}
-	
+	logsStart := 0
+
 	// Clear and write new content
 	panelX.Clear()
-	fmt.Fprint(panelX, status)
-	
+
 	// Restore existing logs
 	if logsStart >= 0 && logsStart < len(currentText) {
 		fmt.Fprint(panelX, currentText[logsStart:])
@@ -53,19 +24,19 @@ func UpdateLogPanel(panelX *tview.TextView) {
 
 func UpdateItemsPanel(panel *tview.TextView) {
 	panel.Clear()
-	
+
 	gs := GetGameState()
-	
+
 	fmt.Fprintf(panel, "[yellow]YOUR ITEMS[white]\n\n")
-	
+
 	if gs.gameOver {
 		fmt.Fprintf(panel, "[red]GAME OVER[white]\n\n")
 	}
-	
+
 	// Live resources
 	fmt.Fprintf(panel, "[gold]Coins:[white] %d (+%.1f/s)\n", gs.coins, gs.coinsPerS)
 	fmt.Fprintf(panel, "[cyan]Diamonds:[white] %d (+%.1f/s)\n\n", gs.diamonds, gs.diamPerS)
-	
+
 	// Items
 	fmt.Fprintf(panel, "[cyan]Door:[white] Level %d (HP: %d)\n", gs.doorLevel, gs.doorMaxHP)
 	if gs.bedLevel > 0 {
@@ -75,7 +46,7 @@ func UpdateItemsPanel(panel *tview.TextView) {
 		fmt.Fprintf(panel, "[magenta]Playbox:[white] Level %d (+%.0f diamonds/s)\n", gs.playboxLevel, gs.diamPerS)
 	}
 	fmt.Fprintf(panel, "[orange]Defense:[white] %d\n", gs.playerMaxDefense)
-	
+
 	// Guns
 	if len(gs.guns) > 0 {
 		fmt.Fprintf(panel, "\n[yellow]GUNS:[white]\n")
@@ -87,10 +58,10 @@ func UpdateItemsPanel(panel *tview.TextView) {
 
 func UpdateShopPanel(panel *tview.TextView, selectedItem int, category int) {
 	panel.Clear()
-	
+
 	categoryNames := []string{"COINS", "DIAMONDS", "GUNS"}
 	items := GetAvailableItemsByCategory(category)
-	
+
 	// Show category tabs
 	fmt.Fprintf(panel, "[yellow]SHOP[white] [gray](←/→: category, ↑/↓: item, I: buy)[white]\n")
 	for i, name := range categoryNames {
@@ -101,10 +72,10 @@ func UpdateShopPanel(panel *tview.TextView, selectedItem int, category int) {
 		}
 	}
 	fmt.Fprintf(panel, "\n\n")
-	
+
 	for i, item := range items {
 		color := GetItemColor(item)
-		
+
 		// Build cost string
 		costStr := ""
 		if item.costCoins > 0 && item.costDiamonds > 0 {
@@ -114,7 +85,7 @@ func UpdateShopPanel(panel *tview.TextView, selectedItem int, category int) {
 		} else if item.costDiamonds > 0 {
 			costStr = fmt.Sprintf("%dd", item.costDiamonds)
 		}
-		
+
 		// Build level string
 		lvlStr := ""
 		if item.maxLevel < 999 {
@@ -122,14 +93,14 @@ func UpdateShopPanel(panel *tview.TextView, selectedItem int, category int) {
 		} else {
 			lvlStr = "-"
 		}
-		
+
 		// Highlight selected item with background
 		if i == selectedItem {
 			fmt.Fprintf(panel, "[black:white]%s%s(%s/%s)[white:-]\n", color, item.name, costStr, lvlStr)
 		} else {
 			fmt.Fprintf(panel, "%s%s(%s/%s)[white]\n", color, item.name, costStr, lvlStr)
 		}
-		
+
 		// Show description
 		fmt.Fprintf(panel, "  %s\n", item.description)
 	}
@@ -137,18 +108,18 @@ func UpdateShopPanel(panel *tview.TextView, selectedItem int, category int) {
 
 func UpdateRoomDefensePanel(panel *tview.TextView) {
 	panel.Clear()
-	
+
 	gs := GetGameState()
 	room := gs.rooms[gs.currentRoom]
-	
+
 	fmt.Fprintf(panel, "[yellow]DREAMERS[white]\n\n")
-	
+
 	// Show player first
 	playerBar := DrawHPBar(gs.playerDefense, gs.playerMaxDefense, 15)
 	fmt.Fprintf(panel, "[green]You[white] %s %d/%d\n", playerBar, gs.playerDefense, gs.playerMaxDefense)
 	doorBar := DrawHPBar(gs.doorHP, gs.doorMaxHP, 15)
 	fmt.Fprintf(panel, "Door Lv%d %s %d/%d\n\n", gs.doorLevel, doorBar, gs.doorHP, gs.doorMaxHP)
-	
+
 	// Show AI characters
 	for _, char := range room.characters {
 		charBar := DrawHPBar(char.defense, char.maxDefense, 15)
@@ -156,7 +127,7 @@ func UpdateRoomDefensePanel(panel *tview.TextView) {
 		charDoorBar := DrawHPBar(char.doorHP, char.doorMaxHP, 15)
 		fmt.Fprintf(panel, "Door Lv%d %s %d/%d\n", char.doorLevel, charDoorBar, char.doorHP, char.doorMaxHP)
 	}
-	
+
 	fmt.Fprintf(panel, "\n[yellow]RESOURCES[white]\n")
 	fmt.Fprintf(panel, "[gold]Coins:[white] %d (+%.1f/s)\n", gs.coins, gs.coinsPerS)
 	fmt.Fprintf(panel, "[cyan]Diamonds:[white] %d (+%.1f/s)\n", gs.diamonds, gs.diamPerS)
@@ -164,15 +135,15 @@ func UpdateRoomDefensePanel(panel *tview.TextView) {
 
 func UpdateRoomItemsPanel(panel *tview.TextView) {
 	panel.Clear()
-	
+
 	gs := GetGameState()
-	
+
 	fmt.Fprintf(panel, "[yellow]ROOM ITEMS[white]\n\n")
-	
+
 	// Show door HP
 	doorBar := DrawHPBar(gs.doorHP, gs.doorMaxHP, 20)
 	fmt.Fprintf(panel, "[cyan]Door:[white] %s %d/%d\n\n", doorBar, gs.doorHP, gs.doorMaxHP)
-	
+
 	if len(gs.rooms[gs.currentRoom].items) == 0 {
 		fmt.Fprintf(panel, "[gray]No items[white]\n")
 	} else {
@@ -180,11 +151,11 @@ func UpdateRoomItemsPanel(panel *tview.TextView) {
 			fmt.Fprintf(panel, "• %s\n", item)
 		}
 	}
-	
+
 	if gs.hunterActive {
 		fmt.Fprintf(panel, "\n[red]⚠ HUNTER LEVEL %d[white]\n", gs.hunterLevel)
 		fmt.Fprintf(panel, "Attack: %d every 3s\n", gs.hunterAttack)
-		
+
 		hunterBar := DrawHPBar(gs.hunterHP, gs.hunterMaxHP, 20)
 		fmt.Fprintf(panel, "[red]HP:[white] %s %d/%d\n", hunterBar, gs.hunterHP, gs.hunterMaxHP)
 	}
