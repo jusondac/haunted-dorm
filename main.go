@@ -61,10 +61,66 @@ func main() {
 	AddLog(panelLog, "[cyan]Defend your room from Dream Hunters![white]")
 	AddLog(panelLog, "[yellow]Buy beds to generate coins![white]")
 	updatePanels()
-	
+
+	// Bottom row: Room Defense and Room Items side by side
+	bottomRow := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(panelRoomDefense, 0, 1, false).
+		AddItem(panelRoomItems, 0, 1, false)
+	bottomRow.SetBorderPadding(0, 0, 0, 0)
+
+	// Left column: Logs on top, bottom row below
+	leftColumn := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(panelLog, 0, 2, false).
+		AddItem(bottomRow, 0, 1, false)
+	leftColumn.SetBorderPadding(0, 0, 0, 0)
+
+	// Right column: Your Items and Shop stacked vertically
+	rightColumn := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(panelYourItems, 0, 1, false).
+		AddItem(panelShop, 0, 2, false)
+	rightColumn.SetBorderPadding(0, 0, 0, 0)
+
+	// Create main layout: left column and right column side by side
+	flex := tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(leftColumn, 0, 2, false).
+		AddItem(rightColumn, 0, 1, true)
+	flex.SetBorderPadding(0, 0, 0, 0)
+
 	// Game loop ticker
 	ticker := time.NewTicker(1 * time.Second)
 	combatTicker := time.NewTicker(100 * time.Millisecond) // Combat updates 10x per second
+
+	// Create game over modal (without done func yet)
+	gameOverModal := tview.NewModal().
+		SetText("").
+		AddButtons([]string{"Yes", "No"})
+
+	// Pages to handle modal overlay
+	pages := tview.NewPages().
+		AddPage("main", flex, true, true).
+		AddPage("gameOver", gameOverModal, true, false)
+	
+	// Set modal done function (now that pages is declared)
+	gameOverModal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		if buttonLabel == "Yes" {
+			// Restart game
+			InitGame()
+			selectedItem = 0
+			shopCategory = 0
+			pages.HidePage("gameOver")
+			updatePanels()
+		} else {
+			// Quit
+			ticker.Stop()
+			combatTicker.Stop()
+			app.Stop()
+		}
+	})
+	
 	go func() {
 		hunterSpawnCounter := 0
 		for range ticker.C {
@@ -98,59 +154,6 @@ func main() {
 			updatePanels()
 		}
 	}()
-
-	// Bottom row: Room Defense and Room Items side by side
-	bottomRow := tview.NewFlex().
-		SetDirection(tview.FlexColumn).
-		AddItem(panelRoomDefense, 0, 1, false).
-		AddItem(panelRoomItems, 0, 1, false)
-	bottomRow.SetBorderPadding(0, 0, 0, 0)
-
-	// Left column: Logs on top, bottom row below
-	leftColumn := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(panelLog, 0, 2, false).
-		AddItem(bottomRow, 0, 1, false)
-	leftColumn.SetBorderPadding(0, 0, 0, 0)
-
-	// Right column: Your Items and Shop stacked vertically
-	rightColumn := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(panelYourItems, 0, 1, false).
-		AddItem(panelShop, 0, 2, false)
-	rightColumn.SetBorderPadding(0, 0, 0, 0)
-
-	// Create main layout: left column and right column side by side
-	flex := tview.NewFlex().
-		SetDirection(tview.FlexColumn).
-		AddItem(leftColumn, 0, 2, false).
-		AddItem(rightColumn, 0, 1, true)
-	flex.SetBorderPadding(0, 0, 0, 0)
-
-	// Create game over modal
-	gameOverModal := tview.NewModal().
-		SetText("").
-		AddButtons([]string{"Yes", "No"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			if buttonLabel == "Yes" {
-				// Restart game
-				InitGame()
-				selectedItem = 0
-				shopCategory = 0
-				pages.HidePage("gameOver")
-				updatePanels()
-			} else {
-				// Quit
-				ticker.Stop()
-				combatTicker.Stop()
-				app.Stop()
-			}
-		})
-
-	// Pages to handle modal overlay
-	pages := tview.NewPages().
-		AddPage("main", flex, true, true).
-		AddPage("gameOver", gameOverModal, true, false)
 
 	// Global keyboard shortcuts
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
