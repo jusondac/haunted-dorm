@@ -9,59 +9,59 @@ import (
 
 // Game state
 type GameState struct {
-	coins      int
-	diamonds   int
-	coinsPerS  float64
-	diamPerS   float64
-	
+	coins     int
+	diamonds  int
+	coinsPerS float64
+	diamPerS  float64
+
 	// Items
-	doorLevel  int
-	doorHP     int
-	doorMaxHP  int
-	bedLevel   int
+	doorLevel    int
+	doorHP       int
+	doorMaxHP    int
+	bedLevel     int
 	playboxLevel int
-	
+
 	// Guns
-	guns       []Gun
-	
+	guns []Gun
+
 	// Hunter
-	hunterHP   int
-	hunterMaxHP int
-	hunterPos  int
-	hunterActive bool
-	hunterLevel int
-	hunterAttack int
+	hunterHP       int
+	hunterMaxHP    int
+	hunterPos      int
+	hunterActive   bool
+	hunterLevel    int
+	hunterAttack   int
 	lastAttackTime time.Time
-	
+
 	// Rooms (for spectate)
 	currentRoom int
-	rooms      []Room
-	
+	rooms       []Room
+
 	// Player defense (life)
-	playerDefense int
+	playerDefense    int
 	playerMaxDefense int
-	
+
 	// Game state
 	gameOver bool
 	gameWon  bool
 }
 
 type Character struct {
-	name       string
-	defense    int
-	maxDefense int
-	doorHP     int
-	doorMaxHP  int
-	doorLevel  int
+	name            string
+	defense         int
+	maxDefense      int
+	doorHP          int
+	doorMaxHP       int
+	doorLevel       int
 	lastUpgradeTime time.Time
 }
 
 type Gun struct {
-	name       string
-	level      int
-	damage     int
+	name        string
+	level       int
+	damage      int
 	attackSpeed float64 // attacks per second
-	lastShot   time.Time
+	lastShot    time.Time
 }
 
 type Room struct {
@@ -73,47 +73,47 @@ type Room struct {
 }
 
 type Item struct {
-	name        string
+	name         string
 	currentLevel int
-	maxLevel    int
-	costCoins   int
+	maxLevel     int
+	costCoins    int
 	costDiamonds int
-	production  float64
-	description string
-	itemType    string // "bed", "door", "playbox", "trap", "guard", "gun"
-	damage      int    // for guns
-	attackSpeed float64 // for guns
+	production   float64
+	description  string
+	itemType     string  // "bed", "door", "playbox", "trap", "guard", "gun"
+	damage       int     // for guns
+	attackSpeed  float64 // for guns
 }
 
 var gameState *GameState
 
 func InitGame() {
 	gameState = &GameState{
-		coins:      0,
-		diamonds:   0,
-		coinsPerS:  1,
-		diamPerS:   0,
-		doorLevel:  1,
-		doorHP:     150,
-		doorMaxHP:  150,
-		bedLevel:   1,
-		playboxLevel: 0,
-		guns:       []Gun{},
-		hunterHP:   0,
-		hunterMaxHP: 0,
-		hunterPos:  0,
-		hunterActive: false,
-		hunterLevel: 1,
-		hunterAttack: 15,
-		lastAttackTime: time.Now(),
-		currentRoom: 0,
-		playerDefense: 100,
+		coins:            0,
+		diamonds:         0,
+		coinsPerS:        1,
+		diamPerS:         0,
+		doorLevel:        1,
+		doorHP:           150,
+		doorMaxHP:        150,
+		bedLevel:         1,
+		playboxLevel:     0,
+		guns:             []Gun{},
+		hunterHP:         0,
+		hunterMaxHP:      0,
+		hunterPos:        0,
+		hunterActive:     false,
+		hunterLevel:      1,
+		hunterAttack:     15,
+		lastAttackTime:   time.Now(),
+		currentRoom:      0,
+		playerDefense:    100,
 		playerMaxDefense: 100,
-		gameOver: false,
-		gameWon: false,
+		gameOver:         false,
+		gameWon:          false,
 		rooms: []Room{
 			{
-				name: "Dream Realm",
+				name:  "Dream Realm",
 				items: []string{},
 				characters: []Character{
 					{name: "Luna", defense: 80, maxDefense: 80, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
@@ -122,7 +122,7 @@ func InitGame() {
 					{name: "Hypnos", defense: 85, maxDefense: 85, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
 				},
 				coinsPerS: 0,
-				diamPerS: 0,
+				diamPerS:  0,
 			},
 		},
 	}
@@ -132,21 +132,21 @@ func UpdateGame() {
 	if gameState.gameOver {
 		return
 	}
-	
+
 	// Calculate coins per second from beds
 	gameState.coinsPerS = 0
 	if gameState.bedLevel > 0 {
 		shift := uint(gameState.bedLevel - 1)
 		gameState.coinsPerS = float64(int(1) << shift) // 2^(level-1): 1,2,4,8,16...
 	}
-	
+
 	// Calculate diamonds per second from playbox
 	gameState.diamPerS = 0
 	if gameState.playboxLevel > 0 {
 		shift := uint(gameState.playboxLevel - 1)
 		gameState.diamPerS = float64(int(1) << shift) // 2^(level-1): 1,2,4,8,16...
 	}
-	
+
 	// Add coins
 	gameState.coins += int(gameState.coinsPerS)
 	gameState.diamonds += int(gameState.diamPerS)
@@ -156,18 +156,18 @@ func UpdateCombat(logPanel *tview.TextView) {
 	if !gameState.hunterActive || gameState.gameOver {
 		return
 	}
-	
+
 	now := time.Now()
-	
+
 	// Guns shoot at hunter
 	for i := range gameState.guns {
 		gun := &gameState.guns[i]
 		interval := time.Duration(1000.0/gun.attackSpeed) * time.Millisecond
-		
+
 		if now.Sub(gun.lastShot) >= interval {
 			gameState.hunterHP -= gun.damage
 			gun.lastShot = now
-			
+
 			if gameState.hunterHP <= 0 {
 				gameState.hunterHP = 0
 				gameState.hunterActive = false
@@ -178,13 +178,13 @@ func UpdateCombat(logPanel *tview.TextView) {
 			}
 		}
 	}
-	
+
 	// Hunter attacks door every 3 seconds
 	if now.Sub(gameState.lastAttackTime) >= 3*time.Second {
 		gameState.doorHP -= gameState.hunterAttack
 		gameState.lastAttackTime = now
 		AddLog(logPanel, fmt.Sprintf("[red]Hunter attacks door! -%d HP[white]", gameState.hunterAttack))
-		
+
 		if gameState.doorHP <= 0 {
 			gameState.doorHP = 0
 			gameState.gameOver = true
@@ -192,7 +192,7 @@ func UpdateCombat(logPanel *tview.TextView) {
 			return
 		}
 	}
-	
+
 	// Hunter attacks other dreamers' doors randomly
 	if now.Unix()%5 == 0 { // Every 5 seconds
 		// Find dreamers with doors still standing
@@ -202,18 +202,18 @@ func UpdateCombat(logPanel *tview.TextView) {
 				aliveDreamers = append(aliveDreamers, i)
 			}
 		}
-		
+
 		// Attack one random dreamer
 		if len(aliveDreamers) > 0 {
 			targetIdx := aliveDreamers[now.Unix()%int64(len(aliveDreamers))]
 			char := &gameState.rooms[0].characters[targetIdx]
-			
+
 			damage := gameState.hunterAttack / 2
 			char.doorHP -= damage
 			if char.doorHP < 0 {
 				char.doorHP = 0
 			}
-			
+
 			// Dreamers repair their doors slowly
 			if char.doorHP < char.doorMaxHP && char.doorHP > 0 {
 				char.doorHP += 2
@@ -221,7 +221,7 @@ func UpdateCombat(logPanel *tview.TextView) {
 					char.doorHP = char.doorMaxHP
 				}
 			}
-			
+
 			// Dreamers upgrade their doors every 30 seconds
 			if char.doorLevel < 10 && now.Sub(char.lastUpgradeTime) >= 30*time.Second {
 				char.doorLevel++
@@ -277,10 +277,10 @@ func GetGunPrice(gunCount int) int {
 	if gunCount == 0 {
 		return 8
 	}
-	
+
 	price := 8
 	increment := 8 // First increment after base price (8 → 16 = +8, which is base price doubled = 16)
-	
+
 	for i := 0; i < gunCount; i++ {
 		if i == 0 {
 			// First upgrade: 8 → 16 (×2)
@@ -292,7 +292,7 @@ func GetGunPrice(gunCount int) int {
 			increment = price - 16 // New increment is current price minus the second price
 		}
 	}
-	
+
 	return price
 }
 
@@ -302,19 +302,19 @@ func BuyItem(itemIndex int, logPanel *tview.TextView) {
 		AddLog(logPanel, "[red]Invalid item![white]")
 		return
 	}
-	
+
 	item := items[itemIndex]
-	
+
 	// Check if can afford
 	if !CanAffordItem(item) {
 		AddLog(logPanel, "[red]Not enough resources![white]")
 		return
 	}
-	
+
 	// Deduct costs
 	gameState.coins -= item.costCoins
 	gameState.diamonds -= item.costDiamonds
-	
+
 	// Apply item effect
 	switch item.itemType {
 	case "bed":
@@ -338,11 +338,11 @@ func BuyItem(itemIndex int, logPanel *tview.TextView) {
 		AddLog(logPanel, "[green]Guard hired! Defense +10[white]")
 	case "gun":
 		gun := Gun{
-			name:       item.name,
-			level:      1,
-			damage:     item.damage,
+			name:        item.name,
+			level:       1,
+			damage:      item.damage,
 			attackSpeed: item.attackSpeed,
-			lastShot:   time.Now(),
+			lastShot:    time.Now(),
 		}
 		gameState.guns = append(gameState.guns, gun)
 		AddLog(logPanel, fmt.Sprintf("[yellow]%s purchased! Damage: %d, Speed: %.1f/s[white]", item.name, item.damage, item.attackSpeed))
@@ -355,7 +355,7 @@ func GetGameState() *GameState {
 
 func GetAvailableItemsByCategory(category int) []Item {
 	items := []Item{}
-	
+
 	switch category {
 	case 0: // Coins category
 		// Bed: levels 1-10, price = 25 * 2^(n-1)
@@ -366,7 +366,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 			diamondCost := 0
 			prodShift := uint(nextLevel - 1)
 			production := float64(int(1) << prodShift)
-			
+
 			items = append(items, Item{
 				name:         "Bed",
 				currentLevel: gameState.bedLevel,
@@ -378,13 +378,13 @@ func GetAvailableItemsByCategory(category int) []Item {
 				itemType:     "bed",
 			})
 		}
-		
+
 		// Door: levels 1-10, price = 16 * 2^(n-1)
 		if gameState.doorLevel < 10 {
 			nextLevel := gameState.doorLevel + 1
 			costShift := uint(nextLevel - 1)
 			coinCost := 16 * (int(1) << costShift)
-			
+
 			items = append(items, Item{
 				name:         "Door",
 				currentLevel: gameState.doorLevel,
@@ -396,7 +396,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 				itemType:     "door",
 			})
 		}
-		
+
 	case 1: // Diamonds category
 		// Playbox: levels 1-10, price = 200 * 2^(n-1)
 		if gameState.playboxLevel < 10 {
@@ -405,7 +405,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 			coinCost := 200 * (int(1) << costShift)
 			prodShift := uint(nextLevel - 1)
 			production := float64(int(1) << prodShift)
-			
+
 			items = append(items, Item{
 				name:         "Playbox",
 				currentLevel: gameState.playboxLevel,
@@ -417,7 +417,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 				itemType:     "playbox",
 			})
 		}
-		
+
 		// Trap
 		items = append(items, Item{
 			name:         "Trap",
@@ -429,7 +429,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 			description:  "+5 defense",
 			itemType:     "trap",
 		})
-		
+
 		// Guard
 		items = append(items, Item{
 			name:         "Guard",
@@ -441,11 +441,11 @@ func GetAvailableItemsByCategory(category int) []Item {
 			description:  "+10 defense",
 			itemType:     "guard",
 		})
-		
+
 	case 2: // Guns category
 		gunCount := len(gameState.guns)
 		gunPrice := GetGunPrice(gunCount)
-		
+
 		items = append(items, Item{
 			name:         "Pistol",
 			currentLevel: gunCount,
@@ -457,7 +457,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 			description:  "5dmg 1.0atk/s",
 			itemType:     "gun",
 		})
-		
+
 		items = append(items, Item{
 			name:         "Rifle",
 			currentLevel: 0,
@@ -469,7 +469,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 			description:  "15dmg 0.5atk/s",
 			itemType:     "gun",
 		})
-		
+
 		items = append(items, Item{
 			name:         "Shotgun",
 			currentLevel: 0,
@@ -481,7 +481,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 			description:  "30dmg 0.3atk/s",
 			itemType:     "gun",
 		})
-		
+
 		items = append(items, Item{
 			name:         "Machine Gun",
 			currentLevel: 0,
@@ -493,7 +493,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 			description:  "8dmg 3.0atk/s",
 			itemType:     "gun",
 		})
-		
+
 		items = append(items, Item{
 			name:         "Sniper",
 			currentLevel: 0,
@@ -506,7 +506,7 @@ func GetAvailableItemsByCategory(category int) []Item {
 			itemType:     "gun",
 		})
 	}
-	
+
 	return items
 }
 
@@ -516,19 +516,19 @@ func BuyItemByCategory(itemIndex int, category int, logPanel *tview.TextView) {
 		AddLog(logPanel, "[red]Invalid item![white]")
 		return
 	}
-	
+
 	item := items[itemIndex]
-	
+
 	// Check if can afford
 	if !CanAffordItem(item) {
 		AddLog(logPanel, "[red]Not enough resources![white]")
 		return
 	}
-	
+
 	// Deduct costs
 	gameState.coins -= item.costCoins
 	gameState.diamonds -= item.costDiamonds
-	
+
 	// Apply item effect
 	switch item.itemType {
 	case "bed":
@@ -552,11 +552,11 @@ func BuyItemByCategory(itemIndex int, category int, logPanel *tview.TextView) {
 		AddLog(logPanel, "[green]Guard hired! Defense +10[white]")
 	case "gun":
 		gun := Gun{
-			name:       item.name,
-			level:      1,
-			damage:     item.damage,
+			name:        item.name,
+			level:       1,
+			damage:      item.damage,
 			attackSpeed: item.attackSpeed,
-			lastShot:   time.Now(),
+			lastShot:    time.Now(),
 		}
 		gameState.guns = append(gameState.guns, gun)
 		AddLog(logPanel, fmt.Sprintf("[yellow]%s purchased! Damage: %d, Speed: %.1f/s[white]", item.name, item.damage, item.attackSpeed))
@@ -565,7 +565,7 @@ func BuyItemByCategory(itemIndex int, category int, logPanel *tview.TextView) {
 
 func GetAvailableItems() []Item {
 	items := []Item{}
-	
+
 	// Bed: levels 1-10, price = 25 * 2^(n-1)
 	// Production: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 coins/s
 	if gameState.bedLevel < 10 {
@@ -575,7 +575,7 @@ func GetAvailableItems() []Item {
 		diamondCost := 0
 		prodShift := uint(nextLevel - 1)
 		production := float64(int(1) << prodShift)
-		
+
 		items = append(items, Item{
 			name:         "Bed",
 			currentLevel: gameState.bedLevel,
@@ -587,13 +587,13 @@ func GetAvailableItems() []Item {
 			itemType:     "bed",
 		})
 	}
-	
+
 	// Door: levels 1-10, price = 16 * 2^(n-1)
 	if gameState.doorLevel < 10 {
 		nextLevel := gameState.doorLevel + 1
 		costShift := uint(nextLevel - 1)
 		coinCost := 16 * (int(1) << costShift)
-		
+
 		items = append(items, Item{
 			name:         "Door",
 			currentLevel: gameState.doorLevel,
@@ -605,7 +605,7 @@ func GetAvailableItems() []Item {
 			itemType:     "door",
 		})
 	}
-	
+
 	// Playbox: levels 1-10, price = 200 * 2^(n-1)
 	// Production: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 diamonds/s
 	if gameState.playboxLevel < 10 {
@@ -614,7 +614,7 @@ func GetAvailableItems() []Item {
 		coinCost := 200 * (int(1) << costShift)
 		prodShift := uint(nextLevel - 1)
 		production := float64(int(1) << prodShift)
-		
+
 		items = append(items, Item{
 			name:         "Playbox",
 			currentLevel: gameState.playboxLevel,
@@ -626,7 +626,7 @@ func GetAvailableItems() []Item {
 			itemType:     "playbox",
 		})
 	}
-	
+
 	// Trap and Guard - one-time purchases
 	items = append(items, Item{
 		name:         "Trap",
@@ -638,7 +638,7 @@ func GetAvailableItems() []Item {
 		description:  "+5 defense",
 		itemType:     "trap",
 	})
-	
+
 	items = append(items, Item{
 		name:         "Guard",
 		currentLevel: 0,
@@ -649,11 +649,11 @@ func GetAvailableItems() []Item {
 		description:  "+10 defense",
 		itemType:     "guard",
 	})
-	
+
 	// Guns - various weapons
 	gunCount := len(gameState.guns)
 	gunPrice := GetGunPrice(gunCount)
-	
+
 	items = append(items, Item{
 		name:         "Pistol",
 		currentLevel: gunCount,
@@ -665,7 +665,7 @@ func GetAvailableItems() []Item {
 		description:  "5 dmg, 1.0 atk/s",
 		itemType:     "gun",
 	})
-	
+
 	items = append(items, Item{
 		name:         "Rifle",
 		currentLevel: 0,
@@ -677,7 +677,7 @@ func GetAvailableItems() []Item {
 		description:  "15 dmg, 0.5 atk/s",
 		itemType:     "gun",
 	})
-	
+
 	items = append(items, Item{
 		name:         "Shotgun",
 		currentLevel: 0,
@@ -689,7 +689,7 @@ func GetAvailableItems() []Item {
 		description:  "30 dmg, 0.3 atk/s",
 		itemType:     "gun",
 	})
-	
+
 	items = append(items, Item{
 		name:         "Machine Gun",
 		currentLevel: 0,
@@ -701,7 +701,7 @@ func GetAvailableItems() []Item {
 		description:  "8 dmg, 3.0 atk/s",
 		itemType:     "gun",
 	})
-	
+
 	items = append(items, Item{
 		name:         "Sniper",
 		currentLevel: 0,
@@ -713,7 +713,7 @@ func GetAvailableItems() []Item {
 		description:  "100 dmg, 0.2 atk/s",
 		itemType:     "gun",
 	})
-	
+
 	return items
 }
 
@@ -728,12 +728,12 @@ func GetItemColor(item Item) string {
 	if item.currentLevel >= item.maxLevel && item.maxLevel < 999 {
 		return "[blue]"
 	}
-	
+
 	// Check if can afford (upgradeable)
 	if CanAffordItem(item) {
 		return "[green]"
 	}
-	
+
 	// Too expensive
 	return "[red]"
 }
