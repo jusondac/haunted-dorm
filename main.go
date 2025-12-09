@@ -70,6 +70,17 @@ func main() {
 		for range ticker.C {
 			UpdateGame()
 			
+			// Check for game over
+			gs := GetGameState()
+			if gs.gameOver {
+				if gs.gameWon {
+					gameOverModal.SetText("🎉 VICTORY! 🎉\nYou defeated the Dream Hunter!\n\nPlay again?")
+				} else {
+					gameOverModal.SetText("💀 GAME OVER 💀\nYour door was destroyed!\n\nPlay again?")
+				}
+				pages.ShowPage("gameOver")
+			}
+			
 			// Spawn hunter every 10 seconds
 			hunterSpawnCounter++
 			if hunterSpawnCounter >= 10 {
@@ -115,6 +126,31 @@ func main() {
 		AddItem(leftColumn, 0, 2, false).
 		AddItem(rightColumn, 0, 1, true)
 	flex.SetBorderPadding(0, 0, 0, 0)
+
+	// Create game over modal
+	gameOverModal := tview.NewModal().
+		SetText("").
+		AddButtons([]string{"Yes", "No"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "Yes" {
+				// Restart game
+				InitGame()
+				selectedItem = 0
+				shopCategory = 0
+				pages.HidePage("gameOver")
+				updatePanels()
+			} else {
+				// Quit
+				ticker.Stop()
+				combatTicker.Stop()
+				app.Stop()
+			}
+		})
+
+	// Pages to handle modal overlay
+	pages := tview.NewPages().
+		AddPage("main", flex, true, true).
+		AddPage("gameOver", gameOverModal, true, false)
 
 	// Global keyboard shortcuts
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -183,7 +219,7 @@ func main() {
 	})
 
 	// Run the application
-	if err := app.SetRoot(flex, true).EnableMouse(true).Run(); err != nil {
+	if err := app.SetRoot(pages, true).EnableMouse(true).Run(); err != nil {
 		panic(err)
 	}
 }

@@ -47,11 +47,13 @@ type GameState struct {
 }
 
 type Character struct {
-	name      string
-	defense   int
+	name       string
+	defense    int
 	maxDefense int
-	doorHP    int
-	doorMaxHP int
+	doorHP     int
+	doorMaxHP  int
+	doorLevel  int
+	lastUpgradeTime time.Time
 }
 
 type Gun struct {
@@ -114,10 +116,10 @@ func InitGame() {
 				name: "Dream Realm",
 				items: []string{},
 				characters: []Character{
-					{name: "Luna", defense: 80, maxDefense: 80, doorHP: 100, doorMaxHP: 100},
-					{name: "Morpheus", defense: 90, maxDefense: 90, doorHP: 120, doorMaxHP: 120},
-					{name: "Nyx", defense: 70, maxDefense: 70, doorHP: 90, doorMaxHP: 90},
-					{name: "Hypnos", defense: 85, maxDefense: 85, doorHP: 110, doorMaxHP: 110},
+					{name: "Luna", defense: 80, maxDefense: 80, doorHP: 100, doorMaxHP: 100, doorLevel: 0, lastUpgradeTime: time.Now()},
+					{name: "Morpheus", defense: 90, maxDefense: 90, doorHP: 120, doorMaxHP: 120, doorLevel: 0, lastUpgradeTime: time.Now()},
+					{name: "Nyx", defense: 70, maxDefense: 70, doorHP: 90, doorMaxHP: 90, doorLevel: 0, lastUpgradeTime: time.Now()},
+					{name: "Hypnos", defense: 85, maxDefense: 85, doorHP: 110, doorMaxHP: 110, doorLevel: 0, lastUpgradeTime: time.Now()},
 				},
 				coinsPerS: 0,
 				diamPerS: 0,
@@ -169,13 +171,9 @@ func UpdateCombat(logPanel *tview.TextView) {
 			if gameState.hunterHP <= 0 {
 				gameState.hunterHP = 0
 				gameState.hunterActive = false
-				AddLog(logPanel, "[green]Dream Hunter defeated![white]")
-				
-				// Hunter upgrades after defeat
-				gameState.hunterLevel++
-				gameState.hunterMaxHP += 20
-				gameState.hunterAttack += 5
-				AddLog(logPanel, fmt.Sprintf("[yellow]Hunter upgraded to level %d![white]", gameState.hunterLevel))
+				gameState.gameOver = true
+				gameState.gameWon = true
+				AddLog(logPanel, "[green]Dream Hunter defeated! YOU WIN![white]")
 				return
 			}
 		}
@@ -212,6 +210,14 @@ func UpdateCombat(logPanel *tview.TextView) {
 					if char.doorHP > char.doorMaxHP {
 						char.doorHP = char.doorMaxHP
 					}
+				}
+				
+				// Dreamers upgrade their doors every 30 seconds
+				if char.doorLevel < 10 && now.Sub(char.lastUpgradeTime) >= 30*time.Second {
+					char.doorLevel++
+					char.doorMaxHP += 50
+					char.doorHP = char.doorMaxHP
+					char.lastUpgradeTime = now
 				}
 			}
 		}
@@ -253,6 +259,32 @@ func DrawHPBar(current, max int, width int) string {
 	}
 	bar += "]"
 	return bar
+}
+
+// GetGunPrice calculates gun price based on level
+// Formula: 8 → 16 (×2), then 16 → 40 (+24), 40 → 88 (+48), 88 → 176 (+88), etc.
+// The increment itself doubles each time: +24, +48, +96, +192, +384...
+func GetGunPrice(gunCount int) int {
+	if gunCount == 0 {
+		return 8
+	}
+	
+	price := 8
+	increment := 8 // First increment after base price (8 → 16 = +8, which is base price doubled = 16)
+	
+	for i := 0; i < gunCount; i++ {
+		if i == 0 {
+			// First upgrade: 8 → 16 (×2)
+			price = 16
+			increment = 24 // Next increment
+		} else {
+			// Subsequent upgrades follow pattern where increment grows
+			price += increment
+			increment = price - 16 // New increment is current price minus the second price
+		}
+	}
+	
+	return price
 }
 
 func BuyItem(itemIndex int, logPanel *tview.TextView) {
@@ -317,16 +349,12 @@ func GetAvailableItemsByCategory(category int) []Item {
 	
 	switch category {
 	case 0: // Coins category
-		// Bed: levels 1-10, price starts at 20c and doubles, costs diamonds from level 3
+		// Bed: levels 1-10, price = 25 * 2^(n-1)
 		if gameState.bedLevel < 10 {
 			nextLevel := gameState.bedLevel + 1
-			baseCost := 20 * (1 << uint(gameState.bedLevel))
-			coinCost := baseCost
+			costShift := uint(nextLevel - 1)
+			coinCost := 25 * (int(1) << costShift)
 			diamondCost := 0
-			if nextLevel >= 3 {
-				diamondShift := uint(nextLevel - 3)
-				diamondCost = 10 * (int(1) << diamondShift)
-			}
 			prodShift := uint(nextLevel - 1)
 			production := float64(int(1) << prodShift)
 			
@@ -342,10 +370,11 @@ func GetAvailableItemsByCategory(category int) []Item {
 			})
 		}
 		
-		// Door: levels 1-10
+		// Door: levels 1-10, price = 16 * 2^(n-1)
 		if gameState.doorLevel < 10 {
 			nextLevel := gameState.doorLevel + 1
-			coinCost := 10 * nextLevel
+			costShift := uint(nextLevel - 1)
+			coinCost := 16 * (int(1) << costShift)
 			
 			items = append(items, Item{
 				name:         "Door",
@@ -360,11 +389,11 @@ func GetAvailableItemsByCategory(category int) []Item {
 		}
 		
 	case 1: // Diamonds category
-		// Playbox: levels 1-10
+		// Playbox: levels 1-10, price = 200 * 2^(n-1)
 		if gameState.playboxLevel < 10 {
 			nextLevel := gameState.playboxLevel + 1
-			costShift := uint(gameState.playboxLevel)
-			coinCost := 10 * (int(1) << costShift)
+			costShift := uint(nextLevel - 1)
+			coinCost := 200 * (int(1) << costShift)
 			prodShift := uint(nextLevel - 1)
 			production := float64(int(1) << prodShift)
 			
@@ -405,11 +434,14 @@ func GetAvailableItemsByCategory(category int) []Item {
 		})
 		
 	case 2: // Guns category
+		gunCount := len(gameState.guns)
+		gunPrice := GetGunPrice(gunCount)
+		
 		items = append(items, Item{
 			name:         "Pistol",
-			currentLevel: 0,
+			currentLevel: gunCount,
 			maxLevel:     999,
-			costCoins:    50,
+			costCoins:    gunPrice,
 			costDiamonds: 0,
 			damage:       5,
 			attackSpeed:  1.0,
@@ -525,17 +557,13 @@ func BuyItemByCategory(itemIndex int, category int, logPanel *tview.TextView) {
 func GetAvailableItems() []Item {
 	items := []Item{}
 	
-	// Bed: levels 1-10, price starts at 20c and doubles, costs diamonds from level 3
+	// Bed: levels 1-10, price = 25 * 2^(n-1)
 	// Production: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 coins/s
 	if gameState.bedLevel < 10 {
 		nextLevel := gameState.bedLevel + 1
-		baseCost := 20 * (1 << uint(gameState.bedLevel)) // 20, 40, 80, 160, 320...
-		coinCost := baseCost
+		costShift := uint(nextLevel - 1)
+		coinCost := 25 * (int(1) << costShift)
 		diamondCost := 0
-		if nextLevel >= 3 {
-			diamondShift := uint(nextLevel - 3)
-			diamondCost = 10 * (int(1) << diamondShift) // 0,0,10,20,40,80,160,320,640,1280
-		}
 		prodShift := uint(nextLevel - 1)
 		production := float64(int(1) << prodShift)
 		
@@ -551,10 +579,11 @@ func GetAvailableItems() []Item {
 		})
 	}
 	
-	// Door: levels 1-10, price starts at 10c and increases by 10c each level
+	// Door: levels 1-10, price = 16 * 2^(n-1)
 	if gameState.doorLevel < 10 {
 		nextLevel := gameState.doorLevel + 1
-		coinCost := 10 * nextLevel
+		costShift := uint(nextLevel - 1)
+		coinCost := 16 * (int(1) << costShift)
 		
 		items = append(items, Item{
 			name:         "Door",
@@ -568,12 +597,12 @@ func GetAvailableItems() []Item {
 		})
 	}
 	
-	// Playbox: levels 1-10, price starts at 10c and doubles
+	// Playbox: levels 1-10, price = 200 * 2^(n-1)
 	// Production: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 diamonds/s
 	if gameState.playboxLevel < 10 {
 		nextLevel := gameState.playboxLevel + 1
-		costShift := uint(gameState.playboxLevel)
-		coinCost := 10 * (int(1) << costShift) // 10, 20, 40, 80, 160...
+		costShift := uint(nextLevel - 1)
+		coinCost := 200 * (int(1) << costShift)
 		prodShift := uint(nextLevel - 1)
 		production := float64(int(1) << prodShift)
 		
@@ -613,11 +642,14 @@ func GetAvailableItems() []Item {
 	})
 	
 	// Guns - various weapons
+	gunCount := len(gameState.guns)
+	gunPrice := GetGunPrice(gunCount)
+	
 	items = append(items, Item{
 		name:         "Pistol",
-		currentLevel: len(gameState.guns),
+		currentLevel: gunCount,
 		maxLevel:     999,
-		costCoins:    50,
+		costCoins:    gunPrice,
 		costDiamonds: 0,
 		damage:       5,
 		attackSpeed:  1.0,
