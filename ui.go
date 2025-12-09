@@ -147,14 +147,14 @@ func UpdateRoomDefensePanel(panel *tview.TextView) {
 	playerBar := DrawHPBar(gs.playerDefense, gs.playerMaxDefense, 15)
 	fmt.Fprintf(panel, "[green]You[white] %s %d/%d\n", playerBar, gs.playerDefense, gs.playerMaxDefense)
 	doorBar := DrawHPBar(gs.doorHP, gs.doorMaxHP, 15)
-	fmt.Fprintf(panel, "Door %s %d/%d\n\n", doorBar, gs.doorHP, gs.doorMaxHP)
+	fmt.Fprintf(panel, "Door Lv%d %s %d/%d\n\n", gs.doorLevel, doorBar, gs.doorHP, gs.doorMaxHP)
 	
 	// Show AI characters
 	for _, char := range room.characters {
 		charBar := DrawHPBar(char.defense, char.maxDefense, 15)
 		fmt.Fprintf(panel, "[cyan]%-8s[white] %s %d/%d\n", char.name, charBar, char.defense, char.maxDefense)
 		charDoorBar := DrawHPBar(char.doorHP, char.doorMaxHP, 15)
-		fmt.Fprintf(panel, "Door     %s %d/%d\n", charDoorBar, char.doorHP, char.doorMaxHP)
+		fmt.Fprintf(panel, "Door Lv%d %s %d/%d\n", char.doorLevel, charDoorBar, char.doorHP, char.doorMaxHP)
 	}
 	
 	fmt.Fprintf(panel, "\n[yellow]RESOURCES[white]\n")
