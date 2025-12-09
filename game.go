@@ -89,14 +89,14 @@ var gameState *GameState
 
 func InitGame() {
 	gameState = &GameState{
-		coins:      100,
+		coins:      0,
 		diamonds:   0,
-		coinsPerS:  0,
+		coinsPerS:  1,
 		diamPerS:   0,
-		doorLevel:  0,
-		doorHP:     100,
-		doorMaxHP:  100,
-		bedLevel:   0,
+		doorLevel:  1,
+		doorHP:     150,
+		doorMaxHP:  150,
+		bedLevel:   1,
 		playboxLevel: 0,
 		guns:       []Gun{},
 		hunterHP:   0,
@@ -104,7 +104,7 @@ func InitGame() {
 		hunterPos:  0,
 		hunterActive: false,
 		hunterLevel: 1,
-		hunterAttack: 10,
+		hunterAttack: 15,
 		lastAttackTime: time.Now(),
 		currentRoom: 0,
 		playerDefense: 100,
@@ -116,10 +116,10 @@ func InitGame() {
 				name: "Dream Realm",
 				items: []string{},
 				characters: []Character{
-					{name: "Luna", defense: 80, maxDefense: 80, doorHP: 100, doorMaxHP: 100, doorLevel: 0, lastUpgradeTime: time.Now()},
-					{name: "Morpheus", defense: 90, maxDefense: 90, doorHP: 120, doorMaxHP: 120, doorLevel: 0, lastUpgradeTime: time.Now()},
-					{name: "Nyx", defense: 70, maxDefense: 70, doorHP: 90, doorMaxHP: 90, doorLevel: 0, lastUpgradeTime: time.Now()},
-					{name: "Hypnos", defense: 85, maxDefense: 85, doorHP: 110, doorMaxHP: 110, doorLevel: 0, lastUpgradeTime: time.Now()},
+					{name: "Luna", defense: 80, maxDefense: 80, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
+					{name: "Morpheus", defense: 90, maxDefense: 90, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
+					{name: "Nyx", defense: 70, maxDefense: 70, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
+					{name: "Hypnos", defense: 85, maxDefense: 85, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
 				},
 				coinsPerS: 0,
 				diamPerS: 0,
@@ -195,30 +195,39 @@ func UpdateCombat(logPanel *tview.TextView) {
 	
 	// Hunter attacks other dreamers' doors randomly
 	if now.Unix()%5 == 0 { // Every 5 seconds
+		// Find dreamers with doors still standing
+		aliveDreamers := []int{}
 		for i := range gameState.rooms[0].characters {
-			char := &gameState.rooms[0].characters[i]
-			if char.doorHP > 0 {
-				damage := gameState.hunterAttack / 2
-				char.doorHP -= damage
-				if char.doorHP < 0 {
-					char.doorHP = 0
-				}
-				
-				// Dreamers repair their doors slowly
-				if char.doorHP < char.doorMaxHP && char.doorHP > 0 {
-					char.doorHP += 2
-					if char.doorHP > char.doorMaxHP {
-						char.doorHP = char.doorMaxHP
-					}
-				}
-				
-				// Dreamers upgrade their doors every 30 seconds
-				if char.doorLevel < 10 && now.Sub(char.lastUpgradeTime) >= 30*time.Second {
-					char.doorLevel++
-					char.doorMaxHP += 50
+			if gameState.rooms[0].characters[i].doorHP > 0 {
+				aliveDreamers = append(aliveDreamers, i)
+			}
+		}
+		
+		// Attack one random dreamer
+		if len(aliveDreamers) > 0 {
+			targetIdx := aliveDreamers[now.Unix()%int64(len(aliveDreamers))]
+			char := &gameState.rooms[0].characters[targetIdx]
+			
+			damage := gameState.hunterAttack / 2
+			char.doorHP -= damage
+			if char.doorHP < 0 {
+				char.doorHP = 0
+			}
+			
+			// Dreamers repair their doors slowly
+			if char.doorHP < char.doorMaxHP && char.doorHP > 0 {
+				char.doorHP += 2
+				if char.doorHP > char.doorMaxHP {
 					char.doorHP = char.doorMaxHP
-					char.lastUpgradeTime = now
 				}
+			}
+			
+			// Dreamers upgrade their doors every 30 seconds
+			if char.doorLevel < 10 && now.Sub(char.lastUpgradeTime) >= 30*time.Second {
+				char.doorLevel++
+				char.doorMaxHP += 50
+				char.doorHP = char.doorMaxHP
+				char.lastUpgradeTime = now
 			}
 		}
 	}
@@ -227,7 +236,7 @@ func UpdateCombat(logPanel *tview.TextView) {
 func SpawnHunter(logPanel *tview.TextView) {
 	if !gameState.hunterActive && !gameState.gameOver {
 		gameState.hunterActive = true
-		gameState.hunterHP = 50 + (gameState.hunterLevel * 20)
+		gameState.hunterHP = 100 + (gameState.hunterLevel * 50)
 		gameState.hunterMaxHP = gameState.hunterHP
 		gameState.hunterPos = 0
 		gameState.lastAttackTime = time.Now()
