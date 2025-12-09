@@ -42,12 +42,13 @@ func main() {
 	panelShop.SetBorder(true).SetTitle(" Shop ").SetTitleAlign(tview.AlignLeft)
 
 	selectedItem := 0
+	shopCategory := 0 // 0=Coins, 1=Diamonds, 2=Guns
 	
 	// Function to update all panels
 	updatePanels := func() {
 		UpdateLogPanel(panelLog)
 		UpdateItemsPanel(panelYourItems)
-		UpdateShopPanel(panelShop, selectedItem)
+		UpdateShopPanel(panelShop, selectedItem, shopCategory)
 		UpdateRoomDefensePanel(panelRoomDefense)
 		UpdateRoomItemsPanel(panelRoomItems)
 	}
@@ -63,6 +64,7 @@ func main() {
 	
 	// Game loop ticker
 	ticker := time.NewTicker(1 * time.Second)
+	combatTicker := time.NewTicker(100 * time.Millisecond) // Combat updates 10x per second
 	go func() {
 		hunterSpawnCounter := 0
 		for range ticker.C {
@@ -75,6 +77,13 @@ func main() {
 				hunterSpawnCounter = 0
 			}
 			
+			updatePanels()
+		}
+	}()
+	
+	go func() {
+		for range combatTicker.C {
+			UpdateCombat(panelLog)
 			updatePanels()
 		}
 	}()
@@ -109,12 +118,13 @@ func main() {
 
 	// Global keyboard shortcuts
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		items := GetAvailableItems()
+		items := GetAvailableItemsByCategory(shopCategory)
 		
 		switch event.Key() {
 		case tcell.KeyCtrlC:
 			// Exit application
 			ticker.Stop()
+			combatTicker.Stop()
 			app.Stop()
 			return nil
 		case tcell.KeyUp:
@@ -132,10 +142,20 @@ func main() {
 			}
 			return nil
 		case tcell.KeyLeft:
-			// Previous room (disabled for now)
+			// Previous category
+			if shopCategory > 0 {
+				shopCategory--
+				selectedItem = 0
+				updatePanels()
+			}
 			return nil
 		case tcell.KeyRight:
-			// Next room (disabled for now)
+			// Next category
+			if shopCategory < 2 {
+				shopCategory++
+				selectedItem = 0
+				updatePanels()
+			}
 			return nil
 		}
 		
@@ -143,7 +163,7 @@ func main() {
 		switch event.Rune() {
 		case 'i', 'I':
 			// Buy selected item
-			BuyItem(selectedItem, panelLog)
+			BuyItemByCategory(selectedItem, shopCategory, panelLog)
 			updatePanels()
 			return nil
 		case 'h', 'H':
@@ -154,6 +174,7 @@ func main() {
 		case 'q', 'Q':
 			// Quit
 			ticker.Stop()
+			combatTicker.Stop()
 			app.Stop()
 			return nil
 		}
