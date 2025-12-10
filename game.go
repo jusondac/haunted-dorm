@@ -94,8 +94,8 @@ func InitGame() {
 		coinsPerS:        1,
 		diamPerS:         0,
 		doorLevel:        1,
-		doorHP:           150,
-		doorMaxHP:        150,
+		doorHP:           GetDoorHP(1),
+		doorMaxHP:        GetDoorHP(1),
 		bedLevel:         1,
 		playboxLevel:     0,
 		guns:             []Gun{},
@@ -116,10 +116,10 @@ func InitGame() {
 				name:  "Dream Realm",
 				items: []string{},
 				characters: []Character{
-					{name: "Luna", defense: 80, maxDefense: 80, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
-					{name: "Morpheus", defense: 90, maxDefense: 90, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
-					{name: "Nyx", defense: 70, maxDefense: 70, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
-					{name: "Hypnos", defense: 85, maxDefense: 85, doorHP: 150, doorMaxHP: 150, doorLevel: 1, lastUpgradeTime: time.Now()},
+					{name: "Luna", defense: 80, maxDefense: 80, doorHP: GetDoorHP(1), doorMaxHP: GetDoorHP(1), doorLevel: 1, lastUpgradeTime: time.Now()},
+					{name: "Morpheus", defense: 90, maxDefense: 90, doorHP: GetDoorHP(1), doorMaxHP: GetDoorHP(1), doorLevel: 1, lastUpgradeTime: time.Now()},
+					{name: "Nyx", defense: 70, maxDefense: 70, doorHP: GetDoorHP(1), doorMaxHP: GetDoorHP(1), doorLevel: 1, lastUpgradeTime: time.Now()},
+					{name: "Hypnos", defense: 85, maxDefense: 85, doorHP: GetDoorHP(1), doorMaxHP: GetDoorHP(1), doorLevel: 1, lastUpgradeTime: time.Now()},
 				},
 				coinsPerS: 0,
 				diamPerS:  0,
@@ -225,7 +225,7 @@ func UpdateCombat(logPanel *tview.TextView) {
 			// Dreamers upgrade their doors every 30 seconds
 			if char.doorLevel < 10 && now.Sub(char.lastUpgradeTime) >= 30*time.Second {
 				char.doorLevel++
-				char.doorMaxHP += 50
+				char.doorMaxHP = GetDoorHP(char.doorLevel)
 				char.doorHP = char.doorMaxHP
 				char.lastUpgradeTime = now
 			}
@@ -287,6 +287,14 @@ func GetHunterAttack(level int) int {
 	s := 1.25
 	atk := atk0 * pow(s, float64(level-1))
 	return int(atk)
+}
+
+// GetDoorHP calculates door HP based on level
+// Formula: HP(L) = HP₀ + a × (L−1), HP₀=2000, a=300
+func GetDoorHP(level int) int {
+	hp0 := 2000
+	a := 300
+	return hp0 + a*(level-1)
 }
 
 // GetGunDamage calculates gun damage based on level (number of guns owned)
@@ -372,7 +380,7 @@ func BuyItem(itemIndex int, logPanel *tview.TextView) {
 		AddLog(logPanel, fmt.Sprintf("[green]Bed upgraded to level %d! (+%.0f coins/s)[white]", gameState.bedLevel, item.production))
 	case "door":
 		gameState.doorLevel++
-		gameState.doorMaxHP += 50
+		gameState.doorMaxHP = GetDoorHP(gameState.doorLevel)
 		gameState.doorHP = gameState.doorMaxHP
 		AddLog(logPanel, fmt.Sprintf("[green]Door upgraded to level %d! (HP: %d)[white]", gameState.doorLevel, gameState.doorMaxHP))
 	case "playbox":
@@ -586,7 +594,7 @@ func BuyItemByCategory(itemIndex int, category int, logPanel *tview.TextView) {
 		AddLog(logPanel, fmt.Sprintf("[green]Bed upgraded to level %d! (+%.0f coins/s)[white]", gameState.bedLevel, item.production))
 	case "door":
 		gameState.doorLevel++
-		gameState.doorMaxHP += 50
+		gameState.doorMaxHP = GetDoorHP(gameState.doorLevel)
 		gameState.doorHP = gameState.doorMaxHP
 		AddLog(logPanel, fmt.Sprintf("[green]Door upgraded to level %d! (HP: %d)[white]", gameState.doorLevel, gameState.doorMaxHP))
 	case "playbox":
