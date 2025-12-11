@@ -26,32 +26,18 @@ func UpdateItemsPanel(panel *tview.TextView) {
 	panel.Clear()
 
 	gs := GetGameState()
-
-	fmt.Fprintf(panel, "[yellow]YOUR ITEMS[white]\n\n")
-
 	if gs.gameOver {
 		fmt.Fprintf(panel, "[red]GAME OVER[white]\n\n")
 	}
 
-	// Live resources
-	fmt.Fprintf(panel, "[gold]Coins:[white] %d (+%.1f/s)\n", gs.coins, gs.coinsPerS)
-	fmt.Fprintf(panel, "[cyan]Diamonds:[white] %d (+%.1f/s)\n\n", gs.diamonds, gs.diamPerS)
+	fmt.Fprintf(panel, "[gray](s/w: move, u: upgrade)[white]\n\n")
 
-	// Items
-	fmt.Fprintf(panel, "[cyan]Door:[white] Level %d (HP: %d)\n", gs.doorLevel, gs.doorMaxHP)
-	if gs.bedLevel > 0 {
-		fmt.Fprintf(panel, "[green]Bed:[white] Level %d (+%.0f coins/s)\n", gs.bedLevel, gs.coinsPerS)
-	}
-	if gs.playboxLevel > 0 {
-		fmt.Fprintf(panel, "[magenta]Playbox:[white] Level %d (+%.0f diamonds/s)\n", gs.playboxLevel, gs.diamPerS)
-	}
-	fmt.Fprintf(panel, "[orange]Defense:[white] %d\n", gs.playerMaxDefense)
-
-	// Guns
-	if len(gs.guns) > 0 {
-		fmt.Fprintf(panel, "\n[yellow]GUNS:[white]\n")
-		for _, gun := range gs.guns {
-			fmt.Fprintf(panel, "• %s (Dmg:%d Spd:%.1f)\n", gun.name, gun.damage, gun.attackSpeed)
+	// Display items list with selection
+	for i, itemName := range gs.itemsPanelItems {
+		if i == gs.itemsPanelSelected {
+			fmt.Fprintf(panel, "[black:white]%s[white:-]\n", itemName)
+		} else {
+			fmt.Fprintf(panel, "%s\n", itemName)
 		}
 	}
 }
@@ -63,7 +49,7 @@ func UpdateShopPanel(panel *tview.TextView, selectedItem int, category int) {
 	items := GetAvailableItemsByCategory(category)
 
 	// Show category tabs
-	fmt.Fprintf(panel, "[yellow]SHOP[white] [gray](←/→: category, ↑/↓: item, I: buy)[white]\n")
+	fmt.Fprintf(panel, "[gray](←/→: category, ↑/↓: item, I: buy)[white]\n\n")
 	for i, name := range categoryNames {
 		if i == category {
 			fmt.Fprintf(panel, "[black:white]%s[white:-] ", name)
@@ -122,8 +108,7 @@ func UpdateRoomDefensePanel(panel *tview.TextView) {
 
 	// Show AI characters
 	for _, char := range room.characters {
-		charDoorBar := DrawHPBar(char.doorHP, char.doorMaxHP, 15)
-		fmt.Fprintf(panel, "[cyan]%-8s[white] Door Lv%d %s %d/%d\n", char.name, char.doorLevel, charDoorBar, char.doorHP, char.doorMaxHP)
+		fmt.Fprintf(panel, "[cyan]%-8s[white] Door Lv%d %d/%d\n", char.name, char.doorLevel, char.doorHP, char.doorMaxHP)
 	}
 }
 
@@ -162,4 +147,14 @@ func findString(text string, search string) int {
 		}
 	}
 	return -1
+}
+
+// UpdateResourcePanel updates the top resource panel
+func UpdateResourcePanel(panel *tview.TextView) {
+	panel.Clear()
+
+	gs := GetGameState()
+
+	fmt.Fprintf(panel, "[gold]Coins: %d (+%.1f/s)[white]  [cyan]Diamonds: %d (+%.1f/s)[white]  [orange]Defense: %d[white]",
+		gs.coins, gs.coinsPerS, gs.diamonds, gs.diamPerS, gs.playerMaxDefense)
 }

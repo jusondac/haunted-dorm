@@ -11,20 +11,31 @@ func main() {
 	app := tview.NewApplication()
 	InitGame()
 
+	// Top resource panel
+	panelResources := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(false).
+		SetTextAlign(tview.AlignCenter).
+		SetChangedFunc(func() {
+			app.Draw()
+		})
+	panelResources.SetBorder(true)
+
 	// Left side panels
 	panelLog := tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true).
+		SetWordWrap(true).
 		SetChangedFunc(func() {
 			app.Draw()
 		})
 	panelLog.SetBorder(true).SetTitle(" Status & Logs ").SetTitleAlign(tview.AlignLeft)
-	
+
 	panelRoomDefense := tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true)
 	panelRoomDefense.SetBorder(true).SetTitle(" Dreamers ").SetTitleAlign(tview.AlignLeft)
-	
+
 	panelRoomItems := tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true)
@@ -41,21 +52,30 @@ func main() {
 		SetScrollable(true)
 	panelShop.SetBorder(true).SetTitle(" Shop ").SetTitleAlign(tview.AlignLeft)
 
+	// Bottom help panel
+	panelHelp := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(false).
+		SetTextAlign(tview.AlignCenter).
+		SetText("[yellow]Keys:[white] ←/→:Category  ↑/↓:Select  [yellow]I:[white]Buy  [yellow]S/W:[white]ItemNav  [yellow]U:[white]Upgrade  [yellow]H:[white]SpawnHunter  [yellow]Q:[white]Quit")
+	panelHelp.SetBorder(true)
+
 	selectedItem := 0
 	shopCategory := 0 // 0=Coins, 1=Diamonds, 2=Guns
-	
+
 	// Function to update all panels
 	updatePanels := func() {
 		UpdateLogPanel(panelLog)
+		UpdateResourcePanel(panelResources)
 		UpdateItemsPanel(panelYourItems)
 		UpdateShopPanel(panelShop, selectedItem, shopCategory)
 		UpdateRoomDefensePanel(panelRoomDefense)
 		UpdateRoomItemsPanel(panelRoomItems)
 	}
-	
+
 	// Initial panel update (must be before AddLog)
 	updatePanels()
-	
+
 	// Initial log messages
 	AddLog(panelLog, "[green]Welcome to Haunted Room Defense![white]")
 	AddLog(panelLog, "[cyan]Defend your room from Dream Hunters![white]")
@@ -83,11 +103,19 @@ func main() {
 		AddItem(panelShop, 0, 2, false)
 	rightColumn.SetBorderPadding(0, 0, 0, 0)
 
-	// Create main layout: left column and right column side by side
-	flex := tview.NewFlex().
+	// Main content: left column and right column side by side
+	mainContent := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
 		AddItem(leftColumn, 0, 2, false).
 		AddItem(rightColumn, 0, 1, true)
+	mainContent.SetBorderPadding(0, 0, 0, 0)
+
+	// Overall layout: resource panel on top, main content in middle, help panel at bottom
+	flex := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(panelResources, 3, 0, false).
+		AddItem(mainContent, 0, 1, false).
+		AddItem(panelHelp, 3, 0, false)
 	flex.SetBorderPadding(0, 0, 0, 0)
 
 	// Game loop ticker
@@ -107,7 +135,7 @@ func main() {
 	pages := tview.NewPages().
 		AddPage("main", flex, true, true).
 		AddPage("gameOver", gameOverModal, true, false)
-	
+
 	// Set modal done function (now that pages is declared)
 	gameOverModal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		if buttonLabel == "Yes" {
@@ -124,12 +152,12 @@ func main() {
 			app.Stop()
 		}
 	})
-	
+
 	go func() {
 		hunterSpawnCounter := 0
 		for range ticker.C {
 			UpdateGame()
-			
+
 			// Check for game over
 			gs := GetGameState()
 			if gs.gameOver {
@@ -140,18 +168,18 @@ func main() {
 				}
 				pages.ShowPage("gameOver")
 			}
-			
+
 			// Spawn hunter every 10 seconds
 			hunterSpawnCounter++
 			if hunterSpawnCounter >= 10 {
 				SpawnHunter(panelLog)
 				hunterSpawnCounter = 0
 			}
-			
+
 			updatePanels()
 		}
 	}()
-	
+
 	go func() {
 		for range combatTicker.C {
 			UpdateCombat(panelLog)
@@ -166,9 +194,9 @@ func main() {
 		if gs.gameOver {
 			return event
 		}
-		
+
 		items := GetAvailableItemsByCategory(shopCategory)
-		
+
 		switch event.Key() {
 		case tcell.KeyCtrlC:
 			// Exit application
@@ -207,12 +235,27 @@ func main() {
 			}
 			return nil
 		}
-		
+
 		// Handle character keys
 		switch event.Rune() {
 		case 'i', 'I':
 			// Buy selected item
 			BuyItemByCategory(selectedItem, shopCategory, panelLog)
+			updatePanels()
+			return nil
+		case 's', 'S':
+			// Move down in Your Items panel
+			MoveItemSelection(1)
+			updatePanels()
+			return nil
+		case 'w', 'W':
+			// Move up in Your Items panel
+			MoveItemSelection(-1)
+			updatePanels()
+			return nil
+		case 'u', 'U':
+			// Upgrade selected item in Your Items panel
+			UpgradeSelectedItem(panelLog)
 			updatePanels()
 			return nil
 		case 'h', 'H':
@@ -227,7 +270,7 @@ func main() {
 			app.Stop()
 			return nil
 		}
-		
+
 		return event
 	})
 

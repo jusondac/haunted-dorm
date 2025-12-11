@@ -44,6 +44,10 @@ type GameState struct {
 	// Game state
 	gameOver bool
 	gameWon  bool
+
+	// Your Items panel selection
+	itemsPanelSelected int
+	itemsPanelItems    []string
 }
 
 type Character struct {
@@ -89,28 +93,30 @@ var gameState *GameState
 
 func InitGame() {
 	gameState = &GameState{
-		coins:            0,
-		diamonds:         0,
-		coinsPerS:        1,
-		diamPerS:         0,
-		doorLevel:        1,
-		doorHP:           GetDoorHP(1),
-		doorMaxHP:        GetDoorHP(1),
-		bedLevel:         1,
-		playboxLevel:     0,
-		guns:             []Gun{},
-		hunterHP:         0,
-		hunterMaxHP:      0,
-		hunterPos:        0,
-		hunterActive:     false,
-		hunterLevel:      1,
-		hunterAttack:     GetHunterAttack(1),
-		lastAttackTime:   time.Now(),
-		currentRoom:      0,
-		playerDefense:    100,
-		playerMaxDefense: 100,
-		gameOver:         false,
-		gameWon:          false,
+		coins:              0,
+		diamonds:           0,
+		coinsPerS:          1,
+		diamPerS:           0,
+		doorLevel:          1,
+		doorHP:             GetDoorHP(1),
+		doorMaxHP:          GetDoorHP(1),
+		bedLevel:           1,
+		playboxLevel:       0,
+		guns:               []Gun{},
+		hunterHP:           0,
+		hunterMaxHP:        0,
+		hunterPos:          0,
+		hunterActive:       false,
+		hunterLevel:        1,
+		hunterAttack:       GetHunterAttack(1),
+		lastAttackTime:     time.Now(),
+		currentRoom:        0,
+		playerDefense:      100,
+		playerMaxDefense:   100,
+		gameOver:           false,
+		gameWon:            false,
+		itemsPanelSelected: 0,
+		itemsPanelItems:    []string{},
 		rooms: []Room{
 			{
 				name:  "Dream Realm",
@@ -126,6 +132,7 @@ func InitGame() {
 			},
 		},
 	}
+	updateItemsPanelList()
 }
 
 func UpdateGame() {
@@ -619,6 +626,8 @@ func BuyItemByCategory(itemIndex int, category int, logPanel *tview.TextView) {
 		gameState.guns = append(gameState.guns, gun)
 		AddLog(logPanel, fmt.Sprintf("[yellow]%s purchased! Damage: %d, Speed: %.1f/s[white]", item.name, item.damage, item.attackSpeed))
 	}
+
+	updateItemsPanelList()
 }
 
 func GetAvailableItems() []Item {
@@ -795,4 +804,121 @@ func GetItemColor(item Item) string {
 
 	// Too expensive
 	return "[red]"
+}
+
+// updateItemsPanelList updates the items panel list
+func updateItemsPanelList() {
+	items := []string{}
+
+	// Add door
+	items = append(items, fmt.Sprintf("Door Lv%d (HP:%d)", gameState.doorLevel, gameState.doorMaxHP))
+
+	// Add bed if purchased
+	if gameState.bedLevel > 0 {
+		items = append(items, fmt.Sprintf("Bed Lv%d (+%.0f/s)", gameState.bedLevel, gameState.coinsPerS))
+	}
+
+	// Add playbox if purchased
+	if gameState.playboxLevel > 0 {
+		items = append(items, fmt.Sprintf("Playbox Lv%d (+%.0f/s)", gameState.playboxLevel, gameState.diamPerS))
+	}
+
+	// Add defense
+	items = append(items, fmt.Sprintf("Defense: %d", gameState.playerMaxDefense))
+
+	// Add guns
+	for _, gun := range gameState.guns {
+		items = append(items, fmt.Sprintf("%s (D:%d S:%.1f)", gun.name, gun.damage, gun.attackSpeed))
+	}
+
+	gameState.itemsPanelItems = items
+}
+
+// MoveItemSelection moves the selection in items panel
+func MoveItemSelection(direction int) {
+	newPos := gameState.itemsPanelSelected + direction
+	if newPos >= 0 && newPos < len(gameState.itemsPanelItems) {
+		gameState.itemsPanelSelected = newPos
+	}
+}
+
+// UpgradeSelectedItem upgrades the selected item in items panel
+func UpgradeSelectedItem(logPanel *tview.TextView) {
+	if gameState.itemsPanelSelected < 0 || gameState.itemsPanelSelected >= len(gameState.itemsPanelItems) {
+		return
+	}
+
+	// Determine which item to upgrade based on selection
+	itemOffset := 0
+
+	// Item 0 is always door
+	if gameState.itemsPanelSelected == itemOffset {
+		// Door
+		if gameState.doorLevel < 10 {
+			costShift := uint(gameState.doorLevel - 1)
+			coinCost := 16 * (int(1) << costShift)
+
+			if gameState.coins >= coinCost {
+				gameState.coins -= coinCost
+				gameState.doorLevel++
+				gameState.doorMaxHP = GetDoorHP(gameState.doorLevel)
+				gameState.doorHP = gameState.doorMaxHP
+				AddLog(logPanel, fmt.Sprintf("[green]Door upgraded to level %d! (HP: %d)[white]", gameState.doorLevel, gameState.doorMaxHP))
+				updateItemsPanelList()
+			} else {
+				AddLog(logPanel, "[red]Not enough coins![white]")
+			}
+		} else {
+			AddLog(logPanel, "[yellow]Door is at max level![white]")
+		}
+		return
+	}
+	itemOffset++
+
+	// Bed (if exists)
+	if gameState.bedLevel > 0 {
+		if gameState.itemsPanelSelected == itemOffset {
+			if gameState.bedLevel < 10 {
+				costShift := uint(gameState.bedLevel - 1)
+				coinCost := 25 * (int(1) << costShift)
+
+				if gameState.coins >= coinCost {
+					gameState.coins -= coinCost
+					gameState.bedLevel++
+					AddLog(logPanel, fmt.Sprintf("[green]Bed upgraded to level %d![white]", gameState.bedLevel))
+					updateItemsPanelList()
+				} else {
+					AddLog(logPanel, "[red]Not enough coins![white]")
+				}
+			} else {
+				AddLog(logPanel, "[yellow]Bed is at max level![white]")
+			}
+			return
+		}
+		itemOffset++
+	}
+
+	// Playbox (if exists)
+	if gameState.playboxLevel > 0 {
+		if gameState.itemsPanelSelected == itemOffset {
+			if gameState.playboxLevel < 10 {
+				nextLevel := gameState.playboxLevel + 1
+				costShift := uint(nextLevel - 1)
+				coinCost := 200 * (int(1) << costShift)
+
+				if gameState.coins >= coinCost {
+					gameState.coins -= coinCost
+					gameState.playboxLevel++
+					AddLog(logPanel, fmt.Sprintf("[green]Playbox upgraded to level %d![white]", gameState.playboxLevel))
+					updateItemsPanelList()
+				} else {
+					AddLog(logPanel, "[red]Not enough coins![white]")
+				}
+			} else {
+				AddLog(logPanel, "[yellow]Playbox is at max level![white]")
+			}
+			return
+		}
+		itemOffset++
+	}
 }
